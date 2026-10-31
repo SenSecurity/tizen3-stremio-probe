@@ -31,3 +31,7 @@ The `private` package.json flag prevents accidental npm publication. It does not
 TizenBrew Old loads module files through the public jsDelivr CDN. Making the repository private later prevents normal fresh loads, and does not guarantee removal of previously cached files.
 
 References: [TizenBrew modules](https://github.com/reisxd/TizenBrew/blob/main/docs/MODULES.md), [Stremio Tizen bundle](https://dl.strem.io/server/v4.20.1/tizen/server.js), [jsDelivr](https://github.com/jsdelivr/jsdelivr).
+
+## Optional torrent range diagnostic
+
+`service-media.js` is a separate diagnostic for a 64 KiB HTTP range from the public [Sintel test torrent](https://webtorrent.io/torrents/sintel.torrent). Sintel is by the Blender Foundation and licensed under [CC BY 3.0](https://durian.blender.org/about/). This diagnostic embeds public torrent metadata, uses up to six peer connections and a 16 MiB circular buffer, and requests engine shutdown after completion or a 90 second deadline. P2P operation can upload pieces while active. It is not started by the default module entry. No user addon or account data is included.
