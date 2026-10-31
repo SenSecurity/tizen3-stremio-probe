@@ -1,39 +1,45 @@
-# Tizen 3 Stremio startup probe
+# Stremio TV server for Tizen 3
 
-Temporary TizenBrew module to check whether the legacy Stremio Tizen server can start inside a TV's Node service. This is a startup diagnostic, not a streaming application.
+TizenBrew module that runs the legacy Stremio torrent engine on the TV and opens an existing StremioK installation. No PC streaming server is required.
 
-The module downloads the official v4.20.1 Tizen bundle from `dl.strem.io` and checks its SHA-256 before execution. It does not redistribute that bundle. The download explicitly trusts the public ISRG Root X1 and X2 certificates from [Let's Encrypt](https://letsencrypt.org/certificates/), while retaining TLS certificate and hostname validation.
+This is an experimental client setup, independent of the official Stremio Samsung app. Short TV-side startup, torrent-range and audiovisual tests passed on Tizen 3.0 with Node 4.4.3. Long playback and other TV models require separate verification.
 
-The diagnostic binds only to TV loopback. It requests `/stats.json`, then closes the test server. The startup deadline is 60 seconds; the result endpoint closes after 90 seconds. Child processes, hardware profiling, HTTPS certificate setup and casting are excluded. No torrent or media request is made. A small diagnostic log is written to a new temporary directory.
+## Set up StremioK
 
-## Installation
+1. Install TizenBrew and add `npm/stremiok`.
+2. Add `gh/SenSecurity/tizen3-stremio-probe@v0.1.0` as a GitHub module.
+3. Open **Stremio na TV**. It starts the local server and opens your existing StremioK.
+4. In StremioK, select **Settings > Content > Streaming server**.
+5. Select **Stremio server** and enter `http://127.0.0.1:11470`.
+6. Keep conversion disabled.
+7. To open this setup automatically, select **Stremio na TV** in TizenBrew's Autolaunch Settings.
 
-Add this GitHub module in TizenBrew:
+Keep TizenBrew's Developer Mode host set to `127.0.0.1` as its installation guide requires. Existing StremioK addons and account settings stay in the existing installation.
 
-```text
-gh/SenSecurity/tizen3-stremio-probe@main
-```
+## Operation
 
-Open "Stremio startup test". Do not enable service autostart. To repeat after completion, restart TizenBrew's service or reboot the TV.
+The module downloads the official [v4.20.1 Tizen server bundle](https://dl.strem.io/server/v4.20.1/tizen/server.js) and verifies its SHA-256 before execution. HTTPS verification stays enabled, with public ISRG root certificates from [Let's Encrypt](https://letsencrypt.org/certificates/).
 
-## Verification limits
+The server accepts local requests on `127.0.0.1:11470`. It handles one torrent at a time, with up to 16 connections and a 48 MiB memory cache. These limits are not a measurement of total TV or app RAM. Switching torrents retires the previous engine. After 60 seconds without an active streaming request, the module removes idle engines. The server stays available while the TizenBrew service is running.
 
-The generated module was exercised with the official Windows Node 4.4.3 executable. It downloaded and hash-checked the bundle, started a loopback HTTP server, received HTTP 200 from `/stats.json`, and requested shutdown. This is not evidence of TV compatibility or playback.
+Internet access is needed to load the module and server bundle. Keep the repository public for jsDelivr delivery. Making the repository private does not guarantee removal of existing CDN copies.
 
-TV startup, torrent networking, codecs, media playback and sustained resource use remain unverified.
+Software transcoding and local-file addons are disabled. Playback depends on formats supported by the TV. Active torrents can upload pieces to peers.
+
+## Local controls
+
+The launcher uses a loopback-only controller at `http://127.0.0.1:18480`:
+
+- `GET /status` reports the lifecycle state, version, limits, and a sanitized error.
+- `POST /start` starts a stopped server.
+- `POST /stop` closes the streaming runtime and its torrent connections.
+
+The controller is separate from StremioK's streaming server address.
 
 ## Privacy
 
-This repository contains only generic diagnostic code. It contains no TV addresses, account credentials, addon settings or device logs. Runtime diagnostics remain on the TV. The TV contacts the distribution CDN and official Stremio download host, which receive the usual network request information.
+This repository contains generic code, not TV identifiers, addon configuration, account credentials, or device logs. It does not read or modify the addon list or Samsung account. CDN and torrent requests still disclose the usual network information to those services and peers.
 
-The `private` package.json flag prevents accidental npm publication. It does not make this GitHub repository private.
+The package.json `private` flag prevents accidental npm publication. It does not make the GitHub repository private.
 
-TizenBrew Old loads module files through the public jsDelivr CDN. Making the repository private later prevents normal fresh loads, and does not guarantee removal of previously cached files.
-
-References: [TizenBrew modules](https://github.com/reisxd/TizenBrew/blob/main/docs/MODULES.md), [Stremio Tizen bundle](https://dl.strem.io/server/v4.20.1/tizen/server.js), [jsDelivr](https://github.com/jsdelivr/jsdelivr).
-
-## Optional torrent range diagnostic
-
-`service-media.js` is a separate diagnostic for a 64 KiB HTTP range from the public [Sintel test torrent](https://webtorrent.io/torrents/sintel.torrent). Sintel is by the Blender Foundation and licensed under [CC BY 3.0](https://durian.blender.org/about/). This diagnostic embeds public torrent metadata, uses up to six peer connections and a 16 MiB circular buffer, and requests engine shutdown after completion or a 90 second deadline. P2P operation can upload pieces while active. It is not started by the default module entry. No user addon or account data is included.
-
-`service-playback.js` extends the same test with a fixed Sintel-only media path for a separate native TV player diagnostic. It uses up to 16 connections and a 48 MiB circular buffer. It leaves that stream available for at most 180 seconds and provides a loopback-only stop operation. It is not enabled by the default module entry and is not a general Stremio backend.
+References: [TizenBrew modules](https://github.com/reisxd/TizenBrew/blob/main/docs/MODULES.md), [StremioK](https://github.com/Kepler75/StremioK), [jsDelivr](https://github.com/jsdelivr/jsdelivr).

@@ -1,41 +1,112 @@
 <!doctype html>
 <html lang="pt">
 <meta charset="utf-8">
-<title>Teste de arranque Stremio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stremio na TV</title>
 <style>
-body { background: #151920; color: #eee; font: 26px Arial, sans-serif; margin: 50px; }
-h1 { font-size: 38px; } pre { font-size: 19px; white-space: pre-wrap; }
+body { margin: 0; background: #171822; color: #eee; font: 30px Arial, sans-serif; }
+main { max-width: 1050px; margin: 18vh auto; padding: 40px; }
+h1 { font-size: 48px; margin-bottom: 32px; }
+p { line-height: 1.5; }
+button { font: inherit; padding: 18px 26px; margin: 24px 16px 0 0; background: #303244; color: white; border: 3px solid #747788; border-radius: 8px; }
+button:focus { border-color: white; background: #4b407f; outline: 0; }
+[hidden] { display: none; }
 </style>
-<h1>Teste de arranque Stremio</h1>
-<p>Este teste verifica o servidor na TV. Nao reproduz videos nem inicia torrents.</p>
-<p id="state">A aguardar o servico de teste...</p>
-<pre id="output"></pre>
+<main>
+<h1>Stremio na TV</h1>
+<p id="status">A iniciar o servidor na TV...</p>
+<p id="detail">O StremioK vai abrir automaticamente.</p>
+<button id="retry" hidden>Tentar novamente</button>
+<button id="open" hidden>Abrir StremioK</button>
+</main>
 <script>
 (function () {
-    var attempts = 0;
-    function poll() {
+    'use strict';
+    var status = document.getElementById('status');
+    var detail = document.getElementById('detail');
+    var retry = document.getElementById('retry');
+    var open = document.getElementById('open');
+    var phase = 'waiting';
+    var timer;
+    var startedAt = Date.now();
+    var canStart = true;
+    var control = 'http://127.0.0.1:18480';
+    function fail(message) {
+        phase = 'error';
+        clearTimeout(timer);
+        status.textContent = message;
+        detail.textContent = 'Podes tentar novamente ou abrir o StremioK para usar fontes que j? tenham uma liga??o de v?deo.';
+        retry.hidden = false;
+        open.hidden = false;
+        retry.focus();
+    }
+    function openStremio() {
+        if (phase === 'opening') return;
+        phase = 'opening';
+        clearTimeout(timer);
+        status.textContent = 'A abrir o StremioK...';
+        var socket = new WebSocket('ws://127.0.0.1:8081');
+        var deadline = setTimeout(function () { socket.close(); fail('N?o foi poss?vel abrir o StremioK.'); }, 10000);
+        socket.onopen = function () { socket.send(JSON.stringify({type: 4})); };
+        socket.onerror = function () { clearTimeout(deadline); fail('O TizenBrew n?o respondeu.'); };
+        socket.onmessage = function (event) {
+            var message;
+            try { message = JSON.parse(event.data); } catch (error) { return; }
+            if (message.type !== 4 || !Array.isArray(message.payload)) return;
+            var module = message.payload.filter(function (item) { return item.fullName === 'npm/stremiok'; })[0];
+            if (!module) {
+                clearTimeout(deadline);
+                socket.close();
+                return fail('Adiciona primeiro o m?dulo npm/stremiok no TizenBrew.');
+            }
+            try { (module.keys || []).forEach(function (key) { tizen.tvinputdevice.registerKey(key); }); } catch (error) {}
+            socket.send(JSON.stringify({type: 5, payload: module}));
+            clearTimeout(deadline);
+            setTimeout(function () { socket.close(); location.replace(module.appPath); }, 200);
+        };
+    }
+    function requestStart() {
         var request = new XMLHttpRequest();
-        request.open('GET', 'http://127.0.0.1:18471/status', true);
+        request.open('POST', control + '/start', true);
+        request.timeout = 5000;
+        request.send();
+    }
+    function poll() {
+        if (phase !== 'waiting') return;
+        if (Date.now() - startedAt > 60000) return fail('O servidor demorou demasiado tempo a iniciar.');
+        var request = new XMLHttpRequest();
+        var next = function () { if (phase === 'waiting') timer = setTimeout(poll, 700); };
+        request.open('GET', control + '/status', true);
         request.timeout = 2000;
         request.onload = function () {
-            if (request.status !== 200) return;
-            try {
-                var rows = JSON.parse(request.responseText);
-                document.getElementById('state').textContent = 'Resultados do teste';
-                document.getElementById('output').textContent = rows.map(function (row) {
-                    return row.event + ': ' + JSON.stringify(row.value);
-                }).join('\n');
-            } catch (error) {
-                document.getElementById('state').textContent = 'Resposta de diagnostico invalida.';
-            }
+            if (request.status !== 200) return next();
+            var result;
+            try { result = JSON.parse(request.responseText); } catch (error) { return next(); }
+            if (result.state === 'running') return openStremio();
+            if (result.state === 'error') return fail('N?o foi poss?vel iniciar o servidor na TV.');
+            if (result.state === 'stopped' && canStart) { canStart = false; requestStart(); }
+            next();
         };
-        request.onerror = function () {
-            if (attempts > 10) document.getElementById('state').textContent = 'Servico indisponivel. Verificar o estado no TizenBrew.';
-        };
+        request.onerror = next;
+        request.ontimeout = next;
         request.send();
-        attempts += 1;
-        if (attempts < 43) setTimeout(poll, 2000);
     }
+    retry.onclick = function () {
+        phase = 'waiting';
+        startedAt = Date.now();
+        canStart = false;
+        retry.hidden = true;
+        open.hidden = true;
+        status.textContent = 'A iniciar o servidor na TV...';
+        detail.textContent = 'O StremioK vai abrir automaticamente.';
+        requestStart();
+        poll();
+    };
+    open.onclick = openStremio;
+    document.addEventListener('keydown', function (event) {
+        if (event.keyCode === 37 && !retry.hidden) retry.focus();
+        if (event.keyCode === 39 && !open.hidden) open.focus();
+    });
     poll();
 })();
 </script>
