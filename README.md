@@ -35,3 +35,5 @@ References: [TizenBrew modules](https://github.com/reisxd/TizenBrew/blob/main/do
 ## Optional torrent range diagnostic
 
 `service-media.js` is a separate diagnostic for a 64 KiB HTTP range from the public [Sintel test torrent](https://webtorrent.io/torrents/sintel.torrent). Sintel is by the Blender Foundation and licensed under [CC BY 3.0](https://durian.blender.org/about/). This diagnostic embeds public torrent metadata, uses up to six peer connections and a 16 MiB circular buffer, and requests engine shutdown after completion or a 90 second deadline. P2P operation can upload pieces while active. It is not started by the default module entry. No user addon or account data is included.
+
+`service-playback.js` extends the same test with a fixed Sintel-only media path for a separate native TV player diagnostic. It leaves that stream available for at most 120 seconds and provides a loopback-only stop operation. It is not enabled by the default module entry and is not a general Stremio backend.
