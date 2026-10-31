@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt">
+<meta charset="utf-8">
+<title>Teste de arranque Stremio</title>
+<style>
+body { background: #151920; color: #eee; font: 26px Arial, sans-serif; margin: 50px; }
+h1 { font-size: 38px; } pre { font-size: 19px; white-space: pre-wrap; }
+</style>
+<h1>Teste de arranque Stremio</h1>
+<p>Este teste verifica o servidor na TV. Nao reproduz videos nem inicia torrents.</p>
+<p id="state">A aguardar o servico de teste...</p>
+<pre id="output"></pre>
+<script>
+(function () {
+    var attempts = 0;
+    function poll() {
+        var request = new XMLHttpRequest();
+        request.open('GET', 'http://127.0.0.1:18471/status', true);
+        request.timeout = 2000;
+        request.onload = function () {
+            if (request.status !== 200) return;
+            try {
+                var rows = JSON.parse(request.responseText);
+                document.getElementById('state').textContent = 'Resultados do teste';
+                document.getElementById('output').textContent = rows.map(function (row) {
+                    return row.event + ': ' + JSON.stringify(row.value);
+                }).join('\n');
+            } catch (error) {
+                document.getElementById('state').textContent = 'Resposta de diagnostico invalida.';
+            }
+        };
+        request.onerror = function () {
+            if (attempts > 10) document.getElementById('state').textContent = 'Servico indisponivel. Verificar o estado no TizenBrew.';
+        };
+        request.send();
+        attempts += 1;
+        if (attempts < 43) setTimeout(poll, 2000);
+    }
+    poll();
+})();
+</script>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "tizen3-stremio-startup-probe",
+  "version": "0.0.1",
+  "private": true,
+  "packageType": "app",
+  "appName": "Stremio startup test",
+  "appPath": "index.html",
+  "serviceFile": "service.js",
+  "description": "Temporary Node 4 startup diagnostic. No torrents or media.",
+  "keys": []
+}
