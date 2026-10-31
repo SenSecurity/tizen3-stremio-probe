@@ -173,6 +173,8 @@
     });
     var sandbox = {
         Buffer: Buffer,
+        Uint8Array: Object.getPrototypeOf(Buffer.prototype).constructor,
+        ArrayBuffer: new Buffer(1).buffer.constructor,
         console: console,
         process: processView,
         module: {exports: {}},
