@@ -25,7 +25,7 @@
         res.end(JSON.stringify(rows));
     });
     diagnostics.on("error", function (error) { record("diagnostics-error", error.message); });
-    diagnostics.listen(18475, "127.0.0.1");
+    diagnostics.listen(18477, "127.0.0.1");
     var lifetime = setTimeout(function () {
         if (request) request.abort();
         diagnostics.close();
