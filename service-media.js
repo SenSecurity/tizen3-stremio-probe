@@ -115,7 +115,11 @@
                 res.writeHead(403);
                 return res.end("Startup probe only");
             }
-            handler(req, res);
+            handler(req, res, function (error) {
+                note("http-error", String(error && (error.stack || error)));
+                res.writeHead(500);
+                res.end("Diagnostic handler error");
+            });
         });
         servers.push(server);
         server.on("connection", function (socket) { connections.push(socket); });
